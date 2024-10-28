@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "rgnn-lecture"
+version = "0.1.0"
+description = ""
+authors = ["bileamScheuvens <benedictbileam@gmx.de>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+matplotlib = "^3.9.2"
+numpy = "^2.1.2"
+torch = "^2.5.0"
+pyqt6 = "^6.7.1"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
