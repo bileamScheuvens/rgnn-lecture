@@ -4,4 +4,4 @@ The model thus has 3 layers, with 3 neurons each and a ReLU activation function 
 
 # Theoretical Explanation
 Each ReLU is essentially a linear boundary.
-Since the model has 6 neurons with ReLU that and a hexagon is the best available approximation of a circle, it quickly finds this minimum.
+Since the model has 6 neurons with ReLU and a hexagon is the best available approximation of a circle, it quickly finds this minimum.
