@@ -14,12 +14,10 @@ class LinearFunction(torch.autograd.Function):
     @staticmethod
     def backward(ctx, grad_output):
         input, weight, bias = ctx.saved_tensors
-        # dz
-        grad_input = grad_output @ weight 
-        # dw
-        grad_weight = grad_output.T @ input
-        # db
+        grad_input = grad_output.mm(weight)
+        grad_weight = grad_output.t().mm(input) 
         grad_bias = grad_output
+
         return grad_input, grad_weight, grad_bias
 
 # Define custom ReLUFunction
@@ -34,10 +32,41 @@ class ReLUFunction(torch.autograd.Function):
     def backward(ctx, grad_output):
         input, = ctx.saved_tensors
         grad_input = grad_output
-        # kill grad below zero
-        grad_input[input < 0] = 0
-        return grad_input
+        grad_input[input<0] = 0
 
+        return grad_input
+    
+# Sigmoid function
+def sigmoid(x):
+    e = 2.718281828459045
+
+    # Prevent overflow
+    if x >= 0:
+        z = e**(-x)
+        return 1 / (1 + z)
+    else:
+        z = e**(x)
+        return z / (1 + z)
+    
+def sigmoid_derivative( z):
+    return (sigmoid(z)-(1-sigmoid(z)))
+
+# Define custom ReLUFunction
+class SigmoidFunction(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, input):
+        ctx.save_for_backward(input)
+        output = input.detach().apply_(sigmoid)
+        return output
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        input, = ctx.saved_tensors
+        grad_input = grad_output
+        grad_input.apply_(sigmoid_derivative)
+
+        return grad_input
+    
 # Define the FeedForwardNetwork using the custom functions
 class FeedForwardNetwork(nn.Module):
     def __init__(self, input_size=2, hidden_size=32):

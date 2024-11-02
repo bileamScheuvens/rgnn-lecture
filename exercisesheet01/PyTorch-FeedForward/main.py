@@ -35,7 +35,9 @@ data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
 
 # Initialize the network, loss function, and optimizer
+# model = FeedForwardNetwork(hidden_size=32)
 model = FeedForwardNetwork(hidden_size=3)
+
 criterion = nn.BCEWithLogitsLoss()
 optimizer = Adam(model.parameters(), lr=0.01)
 

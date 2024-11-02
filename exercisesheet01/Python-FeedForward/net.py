@@ -63,11 +63,10 @@ class FeedForwardNetwork:
         return tanh(x)
 
     def sigmoid_derivative(self, z):
-        return sigmoid(z) * (1-sigmoid(z))
+        return (sigmoid(z)-(1-sigmoid(z)))
 
     def tanh_derivative(self, z):
-        return 1/(math.cosh(z)**2)
-        # return 1 - tanh(z)**2
+        return (1-(tanh(z)**2))
 
     def forward(self, x):
         # Store inputs and outputs for backward pass
@@ -95,33 +94,35 @@ class FeedForwardNetwork:
         self.dW2_acc = [[0.0 for _ in range(self.hidden_size)] for _ in range(self.hidden_size)]
         self.db2_acc = [0.0 for _ in range(self.hidden_size)]
         self.dW3_acc = [[0.0 for _ in range(self.hidden_size)]]
-        self.db3_acc = [0.0]
+        self.db3_acc = [0.0]    
 
 
     def backward(self, target):
         # Compute gradients for the loss function
-        error = -(target / self.output) + (1-target) / (1-self.output)
-        error = self.output - target
-
+        dLO = sigmoid(self.output) - target  # Gradient of loss w.r.t. output
         # Gradients for W3 and b3
-        dW3 = [[error * self.a2[j] for j in range(self.hidden_size)]]
-        db3 = [error]
+        dW3 = [[dLO * a for a in self.a2]]
+        db3 = [dLO]
 
-        # Backpropagate to layer 2
-        d2 = [error * self.W3[0][i] * self.sigmoid_derivative(self.z2[i]) for i in range(self.hidden_size)]
+        # # Backpropagate to layer 2
+        inpZ2 = [self.sigmoid_derivative(z) for z in self.z2]
+        dLZ2 = [dLO * w[i] * inpZ2[i] for i in range(len(inpZ2)) for w in self.W3]
 
-        # Gradients for W2 and b2
-        dW2 = [[d2[i] * self.a1[j] for i in range(self.hidden_size)] for j in range(self.hidden_size)]
-        db2 = [d2[i] for i in range(self.hidden_size)]
-
-        # Backpropagate to layer 1
-        d1 = [error * self.W2[0][i] * self.tanh_derivative(self.z1[i]) for i in range(self.hidden_size)]
-
-        # Gradients for W1 and b1
-        dW1 = [[d1[i] * self.x0[j] for j in range(2)] for i in range(self.hidden_size)]
-        db1 = [d1[i] for i in range(self.hidden_size)]
+        # # Gradients for W2 and b2
+        dW2 = [[w * self.a1[i] for i in range(len(self.a1))] for w in dLZ2]
+        db2 = dLZ2
+        # # # Backpropagate to layer 1
+        inpZ1 = [self.tanh_derivative(z) for z in self.z1]
+        dLZ1 = [dLO * w[i] * inpZ1[i] for i in range(len(inpZ1)) for w in self.W2]
+        
+        # # Gradients for W1 and b1
+        dW1 = [[dLZ1[j] * self.x0[i] for i in range(len(self.x0))] for j in range(len(dLZ1))]
+        db1 = dLZ1
+        
+        
 
         # Accumulate gradients
+        # TODO uncomment once you have computed the gradients
         self.dW1_acc = [[self.dW1_acc[i][j] + dW1[i][j] for j in range(self.input_size)] for i in range(self.hidden_size)]
         self.db1_acc = [self.db1_acc[i] + db1[i] for i in range(self.hidden_size)]
         self.dW2_acc = [[self.dW2_acc[i][j] + dW2[i][j] for j in range(self.hidden_size)] for i in range(self.hidden_size)]

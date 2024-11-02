@@ -32,12 +32,12 @@ class Adam(Optimizer):
 
                     state['step'] += 1
 
-                    state['m'] = b1 * state['m'] + (1-b1)*g
-                    state['v'] = b2 * state['v'] + (1-b2)*g**2
+                    # TODO implement Adam optimizer TODO
+                    state['m'] = (b1*state['m'])+((1-b1)*g)
+                    state['v'] = (b2*state['v'])+((1-b2)*(g**2))
 
-                    m_hat = state['m'] / (1-b1**state['step'])
-                    v_hat = state['v'] / (1-b2**state['step'])
+                    t = state['step']
+                    mh = state['m']/(1-(b1**t))
+                    vh = state['v']/(1-(b2**t))
 
-                    p -= lr * (m_hat / (torch.sqrt(v_hat) + eps))
-
-
+                    p -= (lr * (mh/((vh**0.5)+eps)))
