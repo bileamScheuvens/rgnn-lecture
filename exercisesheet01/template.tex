@@ -1,0 +1,86 @@
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+
+\usepackage{amssymb, amsmath, amsthm, amsfonts, algorithmic, algorithm, graphicx}
+\usepackage{color}
+\usepackage{bbm}
+\usepackage[dvipsnames]{xcolor} 
+\usepackage[colorlinks,linkcolor=blue,citecolor=blue]{hyperref}
+\usepackage{array}
+\usepackage{ifthen}
+
+\renewcommand{\baselinestretch}{1.1}
+\setlength{\topmargin}{-3pc}
+\setlength{\textheight}{8.5in}
+\setlength{\oddsidemargin}{0pc}
+\setlength{\evensidemargin}{0pc}
+\setlength{\textwidth}{6.5in}
+
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{question}[theorem]{Question}
+\newtheorem{result}[theorem]{Result}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{example}[theorem]{Example}
+\newtheorem{remark}[theorem]{Remark}
+\newtheorem{assumption}[theorem]{Assumption}
+\numberwithin{equation}{section}
+
+\def \endprf{\hfill {\vrule height6pt width6pt depth0pt}\medskip}
+\renewenvironment{proof}{\noindent {\bf Proof} }{\endprf\par}
+
+% Notational convenience,
+% real numbers 
+\newcommand{\R}{\mathbb{R}}  
+% Expectation operator
+\DeclareMathOperator*{\E}{\mathbb{E}}
+% Probability operator
+\DeclareMathOperator*{\Prob}{\mathbb{P}}
+\renewcommand{\Pr}{\Prob}
+
+% You may define additional macros here.
+
+
+\begin{document}
+
+\begin{center}
+    \sc Recurrent and Generative ANNs
+\end{center}
+
+\noindent Name: Bileam Scheuvens, Pankaj Bora
+
+\noindent Email: benedictbileam@gmx.de, bora.pankajt1@gmail.com
+
+\noindent Matr. Nr.:6983475, 6946375
+
+
+
+\section*{Exercise 1}
+\subsection*{(a)}
+See code.
+\subsection*{(b)}
+\subsubsection*{Why is CE typically paired with Softmax?}
+Because cross entropy expects logits, i.e. scores between 0 and 1, which the softmax activation function produces.
+
+\subsubsection{Gradient for CE with Softmax}
+
+\section*{Exercise 2}
+See code.
+
+\section*{Exercise 3}
+
+\begin{enumerate}
+  \item{
+\textbf{Network Configuration}
+A hidden size of 3 leads to a hexagonal decision boundary.
+The model thus has 3 layers, with 3 neurons each and a ReLU activation function after the first and second hidden layer.
+}
+\item{
+\textbf{Theoretical Explanation}
+Each ReLU is essentially a linear boundary.
+Since the model has 6 neurons with ReLU and a hexagon is the best available approximation of a circle, it quickly finds this minimum.
+  }
+\end{enumerate}
+\end{document}
