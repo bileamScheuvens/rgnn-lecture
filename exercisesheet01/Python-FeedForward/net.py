@@ -100,8 +100,7 @@ class FeedForwardNetwork:
 
     def backward(self, target):
         # Compute gradients for the loss function
-        error = -(target / self.output) + (1-target) / (1-self.output)
-        error = self.output - target
+        error = sigmoid(self.output) - target
 
         # Gradients for W3 and b3
         dW3 = [[error * self.a2[j] for j in range(self.hidden_size)]]
@@ -112,14 +111,14 @@ class FeedForwardNetwork:
 
         # Gradients for W2 and b2
         dW2 = [[d2[i] * self.a1[j] for i in range(self.hidden_size)] for j in range(self.hidden_size)]
-        db2 = [d2[i] for i in range(self.hidden_size)]
+        db2 = d2
 
         # Backpropagate to layer 1
         d1 = [error * self.W2[0][i] * self.tanh_derivative(self.z1[i]) for i in range(self.hidden_size)]
 
         # Gradients for W1 and b1
         dW1 = [[d1[i] * self.x0[j] for j in range(2)] for i in range(self.hidden_size)]
-        db1 = [d1[i] for i in range(self.hidden_size)]
+        db1 = d1
 
         # Accumulate gradients
         self.dW1_acc = [[self.dW1_acc[i][j] + dW1[i][j] for j in range(self.input_size)] for i in range(self.hidden_size)]
