@@ -73,10 +73,9 @@ class SelfAttentionLayer(nn.Module):
         # First, transpose and reshape to combine the heads
         # Reshape from (batch_size, num_heads, seq_length, head_dim) to (batch_size, seq_length, embed_size)
         context = context.transpose(-3,-2).reshape(batch_size, seq_length, -1)
-        out = self.output_linear(context)
 
         # Apply the final linear transformation
-        out = self.output_linear(out)  # Shape: (batch_size, seq_length, embed_size)
+        out = self.output_linear(context)  # Shape: (batch_size, seq_length, embed_size)
 
         return out
 
