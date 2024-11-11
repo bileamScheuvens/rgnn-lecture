@@ -241,7 +241,7 @@ class PatchEmbedding(nn.Module):
         # Mask a random number of patches
         x, mask = self.mask_patches(x)
 
-        x += self.pos_embed(self.xpos) + self.pos_embed(self.ypos)
+        x += self.pos_embed(self.xpos.to(x.device)) + self.pos_embed(self.ypos.to(x.device))
         return x, mask
 
     def patch_and_proj(self, x):
@@ -275,7 +275,7 @@ class PatchEmbedding(nn.Module):
         x = x * mask
 
         # Add position embeddings
-        x += self.pos_embed(self.xpos) + self.pos_embed(self.ypos)
+        x += self.pos_embed(self.xpos.to(x.device)) + self.pos_embed(self.ypos.to(x.device))
         return x, mask
 
 class PrintShape(nn.Module):
