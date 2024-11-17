@@ -50,32 +50,35 @@ class SelfAttentionLayer(nn.Module):
 
         # Split the embedding dimension into multiple heads and rearrange the tensor
         # Reshape and transpose to get shape: (batch_size, num_heads, seq_length, head_dim)
-        queries = queries.reshape(batch_size, seq_length, self.num_heads, self.head_dim).transpose(-2, -3)
-        keys = keys.reshape(batch_size, seq_length, self.num_heads, self.head_dim).transpose(-2, -3)
-        values = values.reshape(batch_size, seq_length, self.num_heads, self.head_dim).transpose(-2, -3)
+        # TODO
+        queries = queries.reshape(batch_size, seq_length, self.num_heads, self.head_dim).transpose(1, 2)
+        keys = keys.reshape(batch_size, seq_length, self.num_heads, self.head_dim).transpose(1, 2)
+        values = values.reshape(batch_size, seq_length, self.num_heads, self.head_dim).transpose(1, 2)
 
         # Compute scaled dot-product attention
         # Compute attention scores by taking the dot product between queries and keys
         # and scaling by the square root of the head dimension
         # scores shape: (batch_size, num_heads, seq_length, seq_length)
-        scores = (queries @ keys.transpose(-2,-1)) / math.sqrt(self.head_dim)
-
+        # TODO
+        scores = (queries @ keys.transpose(2,3))/math.sqrt((self.head_dim))
         # Compute the attention weights using the softmax function
-        weights = torch.nn.functional.softmax(scores, dim=-1)
+        # TODO
+        weights = torch.softmax(scores, dim=-1)
 
         # Multiply attention weights with values to get the context vector
         # attention_weights: (batch_size, num_heads, seq_length, seq_length)
         # values: (batch_size, num_heads, seq_length, head_dim)
         # Output: (batch_size, num_heads, seq_length, head_dim)
+        # TODO
         context = weights @ values
-
         # Concatenate the heads and pass through the final linear layer
         # First, transpose and reshape to combine the heads
         # Reshape from (batch_size, num_heads, seq_length, head_dim) to (batch_size, seq_length, embed_size)
-        context = context.transpose(-3,-2).reshape(batch_size, seq_length, -1)
+        # TODO
+        out = context.transpose(1,2).reshape(batch_size, seq_length, embed_size)
 
         # Apply the final linear transformation
-        out = self.output_linear(context)  # Shape: (batch_size, seq_length, embed_size)
+        out = self.output_linear(out)  # Shape: (batch_size, seq_length, embed_size)
 
         return out
 
@@ -175,35 +178,25 @@ class PatchEmbedding(nn.Module):
         # compute total number of patches
         num_patches = (image_height // patch_size) * (image_width // patch_size) * num_frames
 
-        # Project patches into embedding dimension (treat each frame seperatly!)
-        self.makepatch = torch.nn.Unfold(kernel_size=(patch_size, patch_size), stride=patch_size)
-        self.patchproj = torch.nn.Linear(patch_size*patch_size, embed_size)
+        # Project patches into embedding dimension (treat each fram seperatly!)
+        # TODO 
+        self.proj = nn.Sequential(Rearrange('b n h w -> b 1 h (n w)'), nn.Conv2d(1, embed_size, kernel_size=patch_size, stride=patch_size,),  Rearrange('a b c d -> a (c d) b'))
         
-        #------------------------------ attempt at positional embedding with scales, didn't work right away
-        # # Positional Embedding
-        # scales = torch.arange(0, 10000, step=100).unsqueeze(1)
-        # xrange = torch.arange(image_width).repeat(image_height).unsqueeze(0)
-        # yrange = torch.arange(image_height).repeat(image_width).unsqueeze(0)
-        # # shape: [scales, W*H]
-        # xpos = torch.sin(2 * math.pi * scales * xrange)
-        # ypos = torch.cos(2 * math.pi * scales * yrange)
-        # # shape: [H*W]
-        # self.xpos = xpos.sum(dim=0)
-        # self.ypos = ypos.sum(dim=0)
-        # self.pos_embed = torch.nn.Linear(image_width*image_height, embed_size)
-        #------------------------------ old
-
-        pe = torch.zeros(image_height * image_width, embed_size)
-        position = torch.arange(0, image_height * image_width, dtype=torch.float).unsqueeze(1)
-        div_term = torch.exp(torch.arange(0, embed_size, 2).float() * (-math.log(10000.0) / embed_size))
-        
-        pe[:, 0::2] = torch.sin(position * div_term)
-        pe[:, 1::2] = torch.cos(position * div_term)
-        self.pos_embed = torch.nn.Parameter(pe.unsqueeze(0), requires_grad=False)
-
+        # TODO add neccesary logic for position embeddings
+        self.positional_embeddings = self._generate_positional_embeddings(
+            num_patches, embed_size
+        )
         # Mask percentage for masking patches
         self.mask_percentage = mask_percentage
-
+        
+        
+    def _generate_positional_embeddings(self, num_patches, embed_size):
+        pos_enc = torch.zeros((1, num_patches, embed_size))
+        X = torch.arange(num_patches).reshape(-1,1)/torch.pow(1000, torch.arange(0, embed_size, 2)/embed_size)
+        pos_enc[:, :, 0::2] = torch.sin(X)
+        pos_enc[:, :, 1::2] = torch.cos(X)
+        return pos_enc
+    
     def mask_patches(self, x):
         """
         Masks a random subset of the patches in the input tensor.
@@ -229,15 +222,6 @@ class PatchEmbedding(nn.Module):
         x = x * mask
 
         return x, mask
-    
-    def patch_and_proj(self, x):
-        batch_size, num_frames, height, width = x.shape
-        x = x.reshape(-1, 1, height, width) # shape: (B * n_frames, 1, H, W)
-        # print(f"batch_size {batch_size}, n_frames {num_frames}, HW {height} {width}")
-        patched = self.makepatch(x) # shape: (B * n_frames, patch_size^2, n_patches)
-        out = self.patchproj(patched.transpose(-1,-2)) # shape: (B *n_frames, n_patches, embed_dim)
-        out = out.reshape(batch_size, -1, self.embed_size)# shape: (B, n_frames*n_patches, embed_dim)
-        return out
 
     def forward(self, x):
         """
@@ -254,15 +238,19 @@ class PatchEmbedding(nn.Module):
 
         # x shape: (batch_size, num_frames, height, width)
         # After projection: (batch_size, num_patches, embed_size)
-        x = self.patch_and_proj(x)
+        x = self.proj(x)
 
         # Mask a random number of patches
         x, mask = self.mask_patches(x)
 
-        # x += self.pos_embed(self.xpos.to(x.device)) + self.pos_embed(self.ypos.to(x.device))
-        x += x + self.pos_embed[:, :x.size(1), :]
+        # Add position embeddings
+        # TODO
+        # assert False, "TODO: Add position embeddings"
+        
+        positional_embeddings = self.positional_embeddings.repeat(x.shape[0], 1, 1)
+        x = x + positional_embeddings.to(device = x.device)    
+        
         return x, mask
-
 
     def predict(self, x):
         """
@@ -275,7 +263,7 @@ class PatchEmbedding(nn.Module):
             Tensor: Output tensor of shape (batch_size, total_patches, embed_size).
         """
         # Project the input
-        x = self.patch_and_proj(x)
+        x = self.proj(x)
         # Calculate indices to mask out the last frame's patches
         total_patches = self.num_patches_per_frame * self.num_frames
         start_idx = total_patches - self.num_patches_per_frame
@@ -283,10 +271,13 @@ class PatchEmbedding(nn.Module):
         # Mask out the last frame's patches
         mask = torch.ones(1, total_patches, 1, device=x.device)
         mask[:, start_idx:, :] = 0
+        
         x = x * mask
 
         # Add position embeddings
-        x += x + self.pos_embed[:, :x.size(1), :]
+        # TODO
+        positional_embeddings = self.positional_embeddings.repeat(x.shape[0], 1, 1,)
+        x = x + positional_embeddings.to(device = x.device)    
         return x, mask
 
 class PrintShape(nn.Module):
