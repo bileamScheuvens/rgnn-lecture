@@ -3,7 +3,7 @@ import torch
 import matplotlib.pyplot as plt
 
 from data import generate_memory_task_data, CustomDataset
-from net_solution import RNN, LSTM, TCN
+from net import RNN, LSTM, TCN
 
 
 seed = 0
