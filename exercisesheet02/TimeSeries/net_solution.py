@@ -153,7 +153,6 @@ class Conv1d(torch.nn.Module):
         output = output.permute(0, 2, 1)  # [batch_size, hidden_size, output_length]
         return output + self.bias.reshape(1, -1, 1)
 
-
 class TCN(torch.nn.Module):
     def __init__(self, input_size, hidden_size, output_size):
         super().__init__()

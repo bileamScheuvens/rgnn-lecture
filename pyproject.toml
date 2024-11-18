@@ -17,6 +17,8 @@ jsmin = "^3.0.1"
 torchvision = "^0.20.1"
 einops = "^0.8.0"
 h5py = "^3.12.1"
+netcdf4 = "^1.7.2"
+xarray = "^2024.10.0"
 
 
 [build-system]

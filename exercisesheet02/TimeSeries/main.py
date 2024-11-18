@@ -160,12 +160,8 @@ def run(task, model_type):
     plt.close()
 
 
-# for task in ["memory", "memorygen"]:
-#     for model in ["rnn", "lstm", "tcn"]:
-#         run(task, model)
-#     print()
-
 for task in ["memory", "memorygen"]:
-    for model in ["tcn"]:
+    for model in ["rnn", "lstm", "tcn"]:
         run(task, model)
     print()
+
