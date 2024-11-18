@@ -126,7 +126,8 @@ class LSTM(torch.nn.Module):
 class Conv1d(torch.nn.Module):
     def __init__(self, input_size, hidden_size, kernel_size, stride):
         super().__init__()
-        self.kernel = torch.rand((1, hidden_size, input_size, kernel_size), requires_grad=True)
+        self.kernel = torch.nn.Parameter(torch.rand((hidden_size, input_size, kernel_size), requires_grad=True))
+        self.bias = torch.nn.Parameter(torch.rand(hidden_size))
         self.hidden_size = hidden_size
         self.stride = stride
         self.kernel_size = kernel_size
@@ -141,22 +142,23 @@ class Conv1d(torch.nn.Module):
         Returns:
             Tensor: Output of shape (batch_size, hidden_size, sequence_length).
         """
-        batch_size, input_size, sequence_length = x.shape
-        result = torch.zeros((batch_size, self.hidden_size, sequence_length))
-        i = 0
-        while i < sequence_length:
-            # TODO: Fix
-            result[:, ] = self.kernel * x.unsqueeze(1)[...,i:i+self.kernel_size]
-            i+= self.stride 
-
-
+        # unfold input
+        unfolded = x.unfold(dimension=2, size=self.kernel_size, step=self.stride)  # [batch_size, input_size, output_length, kernel_size]
+        # rearrange dims
+        unfolded = einops.rearrange(unfolded, 'b c l k -> b l (c k)')
+        kernel = einops.rearrange(self.kernel, 'o c k -> o (c k)')  # [hidden_size, input_size * kernel_size]
+        # apply conv
+        output = torch.matmul(unfolded, kernel.T)  # [batch_size, output_length, hidden_size]
+        # Rearrange output to match expected shape
+        output = output.permute(0, 2, 1)  # [batch_size, hidden_size, output_length]
+        return output + self.bias.reshape(1, -1, 1)
 
 
 class TCN(torch.nn.Module):
     def __init__(self, input_size, hidden_size, output_size):
         super().__init__()
-        tcn = torch.nn.Conv1d
-        print(input_size, "\n\n\n\n\n")
+        # tcn = torch.nn.Conv1d
+        tcn = Conv1d
         layers = [tcn(input_size, hidden_size, kernel_size=3, stride=3)]
         sequence_length = 30
         n_layers = math.ceil(math.log(sequence_length/output_size, 3))

@@ -130,7 +130,7 @@ def run(task, model_type):
         model=model,
         dataloader_train=dataloader_train,
         dataloader_valid=dataloader_valid,
-        epochs=10,
+        epochs=50,
     )
     print(f"Final accuracy of {model_type} ({num_params} parameters) on {task} task: {accuracy}")
 

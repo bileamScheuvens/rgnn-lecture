@@ -175,21 +175,31 @@ class PatchEmbedding(nn.Module):
         # compute total number of patches
         num_patches = (image_height // patch_size) * (image_width // patch_size) * num_frames
 
-        # Project patches into embedding dimension (treat each fram seperatly!)
+        # Project patches into embedding dimension (treat each frame seperatly!)
         self.makepatch = torch.nn.Unfold(kernel_size=(patch_size, patch_size), stride=patch_size)
         self.patchproj = torch.nn.Linear(patch_size*patch_size, embed_size)
         
-        # Positional Embedding
-        scales = torch.arange(0, 10000, step=100).unsqueeze(1)
-        xrange = torch.arange(image_width).repeat(image_height).unsqueeze(0)
-        yrange = torch.arange(image_height).repeat(image_width).unsqueeze(0)
-        # shape: [scales, W*H]
-        xpos = torch.sin(2 * math.pi * scales * xrange)
-        ypos = torch.cos(2 * math.pi * scales * yrange)
-        # shape: [H*W]
-        self.xpos = xpos.sum(dim=0)
-        self.ypos = ypos.sum(dim=0)
-        self.pos_embed = torch.nn.Linear(image_width*image_height, embed_size)
+        #------------------------------ attempt at positional embedding with scales, didn't work right away
+        # # Positional Embedding
+        # scales = torch.arange(0, 10000, step=100).unsqueeze(1)
+        # xrange = torch.arange(image_width).repeat(image_height).unsqueeze(0)
+        # yrange = torch.arange(image_height).repeat(image_width).unsqueeze(0)
+        # # shape: [scales, W*H]
+        # xpos = torch.sin(2 * math.pi * scales * xrange)
+        # ypos = torch.cos(2 * math.pi * scales * yrange)
+        # # shape: [H*W]
+        # self.xpos = xpos.sum(dim=0)
+        # self.ypos = ypos.sum(dim=0)
+        # self.pos_embed = torch.nn.Linear(image_width*image_height, embed_size)
+        #------------------------------ old
+
+        pe = torch.zeros(image_height * image_width, embed_size)
+        position = torch.arange(0, image_height * image_width, dtype=torch.float).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, embed_size, 2).float() * (-math.log(10000.0) / embed_size))
+        
+        pe[:, 0::2] = torch.sin(position * div_term)
+        pe[:, 1::2] = torch.cos(position * div_term)
+        self.pos_embed = torch.nn.Parameter(pe.unsqueeze(0), requires_grad=False)
 
         # Mask percentage for masking patches
         self.mask_percentage = mask_percentage
@@ -219,6 +229,15 @@ class PatchEmbedding(nn.Module):
         x = x * mask
 
         return x, mask
+    
+    def patch_and_proj(self, x):
+        batch_size, num_frames, height, width = x.shape
+        x = x.reshape(-1, 1, height, width) # shape: (B * n_frames, 1, H, W)
+        # print(f"batch_size {batch_size}, n_frames {num_frames}, HW {height} {width}")
+        patched = self.makepatch(x) # shape: (B * n_frames, patch_size^2, n_patches)
+        out = self.patchproj(patched.transpose(-1,-2)) # shape: (B *n_frames, n_patches, embed_dim)
+        out = out.reshape(batch_size, -1, self.embed_size)# shape: (B, n_frames*n_patches, embed_dim)
+        return out
 
     def forward(self, x):
         """
@@ -240,17 +259,10 @@ class PatchEmbedding(nn.Module):
         # Mask a random number of patches
         x, mask = self.mask_patches(x)
 
-        x += self.pos_embed(self.xpos.to(x.device)) + self.pos_embed(self.ypos.to(x.device))
+        # x += self.pos_embed(self.xpos.to(x.device)) + self.pos_embed(self.ypos.to(x.device))
+        x += x + self.pos_embed[:, :x.size(1), :]
         return x, mask
 
-    def patch_and_proj(self, x):
-        batch_size, num_frames, height, width = x.shape
-        x = x.reshape(-1, 1, height, width) # shape: (B * n_frames, 1, H, W)
-        # print(f"batch_size {batch_size}, n_frames {num_frames}, HW {height} {width}")
-        patched = self.makepatch(x) # shape: (B * n_frames, patch_size^2, n_patches)
-        out = self.patchproj(patched.transpose(-1,-2)) # shape: (B *n_frames, n_patches, embed_dim)
-        out = out.reshape(batch_size, -1, self.embed_size)# shape: (B, n_frames*n_patches, embed_dim)
-        return out
 
     def predict(self, x):
         """
@@ -274,7 +286,7 @@ class PatchEmbedding(nn.Module):
         x = x * mask
 
         # Add position embeddings
-        x += self.pos_embed(self.xpos.to(x.device)) + self.pos_embed(self.ypos.to(x.device))
+        x += x + self.pos_embed[:, :x.size(1), :]
         return x, mask
 
 class PrintShape(nn.Module):
