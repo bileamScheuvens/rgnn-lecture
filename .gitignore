@@ -12,3 +12,4 @@ __pycache__
 *.DS_Store
 *.hdf5
 data/
+!data/*.py
