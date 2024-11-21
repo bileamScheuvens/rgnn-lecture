@@ -30,7 +30,7 @@ class TolkienDataset(th.utils.data.Dataset):
         """
 
         data_root_path = os.path.join(
-            os.path.abspath("../.."), "data", dataset_name
+            os.path.abspath(os.path.dirname(__file__)), "..", "data", dataset_name
         )
         self.data_paths = np.sort(
             glob.glob(os.path.join(data_root_path, "sample*.npy"))

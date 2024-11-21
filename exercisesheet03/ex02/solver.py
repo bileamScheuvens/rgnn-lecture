@@ -155,8 +155,8 @@ class Solver(object):
                         var_str += 'var{}:{:.4f} '.format(j+1, var_j)
                     pbar.write(var_str)
 
-                    if self.model == 'VAE':
-                        pbar.write('C:{:.3f}'.format(C.data[0]))
+                    # if self.model == 'VAE':
+                        # pbar.write('C:{:.3f}'.format(C.data[0]))
 
                 if self.global_iter%self.save_step == 0:
                     self.save_checkpoint(self.ckpt_name)
@@ -169,11 +169,13 @@ class Solver(object):
         pbar.write("[Training Finished]")
         pbar.close()
 
-    def generate_from_latent(self):
+    def generate_from_latent(self, batch_size=16):
         self.net_mode(train=False)
 
-        # TODO: Generate images from randomly sampled latent codes.
-        #       You may use the torchvision "save_image" function to save images to file.
+        with torch.no_grad():
+            latent = cuda(torch.randn(batch_size, self.z_dim), self.use_cuda)
+            imgs = torch.sigmoid(self.net.decoder(latent))
+            save_image(imgs, f"beta{self.beta}-generated.png", nrow=4)
 
 
     def latent_analysis(self):

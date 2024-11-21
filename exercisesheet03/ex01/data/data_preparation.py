@@ -28,7 +28,7 @@ def txt_to_npy(path):
     """
 
     # Load the .txt file
-    with open(path, "r") as file:
+    with open(path, "r", encoding='utf-8') as file:
 
         #
         # Determine the alphabet of the text

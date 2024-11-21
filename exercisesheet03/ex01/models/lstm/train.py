@@ -14,7 +14,8 @@ import time
 import matplotlib.pyplot as plt
 from threading import Thread
 
-sys.path.append("../../utils")
+# rewrite as relative import
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", "utils"))
 from modules import Model
 from configuration import Configuration
 import helper_functions as helpers
@@ -23,7 +24,7 @@ import helper_functions as helpers
 def run_training():
 
     # Load the user configurations
-    cfg = Configuration("config.json")
+    cfg = Configuration(os.path.join(os.path.dirname(__file__),  "config.json"))
 
     # Print some information to console
     #print("Architecture name:", cfg.model.architecture)
@@ -140,7 +141,7 @@ def run_training():
 
 
 if __name__ == "__main__":
-    th.set_num_threads(1)
+    th.set_num_threads(8)
     run_training()
 
     print("Done.")
