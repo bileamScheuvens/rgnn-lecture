@@ -107,7 +107,7 @@ class Solver(object):
             self.load_checkpoint(self.ckpt_name)
 
         self.save_output = args.save_output
-        self.output_dir = args.output_dir
+        self.output_dir = os.path.join(args.output_dir, self.ckpt_name)
         if not os.path.exists(self.output_dir):
             os.makedirs(self.output_dir, exist_ok=True)
 
@@ -137,26 +137,13 @@ class Solver(object):
                 x_recon, mu, logvar = self.net(x)
                 loss = reconstruction_loss(x, x_recon, self.decoder_dist)
 
-                if self.model == 'BetaVAE':
+                if self.beta > 0:
                     total_kld, dim_wise_kld, mean_kld = kl_divergence(mu, logvar)
                     loss = loss + self.beta*total_kld
 
                 self.optim.zero_grad()
                 loss.backward()
                 self.optim.step()
-
-                if self.global_iter%self.display_step == 0:
-                    #pbar.write('[{}] recon_loss:{:.3f} total_kld:{:.3f} mean_kld:{:.3f}'.format(
-                    #    self.global_iter, recon_loss.data[0], total_kld.data[0], mean_kld.data[0]))
-
-                    var = logvar.exp().mean(0).data
-                    var_str = ''
-                    for j, var_j in enumerate(var):
-                        var_str += 'var{}:{:.4f} '.format(j+1, var_j)
-                    pbar.write(var_str)
-
-                    # if self.model == 'VAE':
-                        # pbar.write('C:{:.3f}'.format(C.data[0]))
 
                 if self.global_iter%self.save_step == 0:
                     self.save_checkpoint(self.ckpt_name)
@@ -171,21 +158,40 @@ class Solver(object):
 
     def generate_from_latent(self, batch_size=16):
         self.net_mode(train=False)
+        self.net.to(device="cpu")
 
         with torch.no_grad():
-            latent = cuda(torch.randn(batch_size, self.z_dim), self.use_cuda)
+            # stretched normal for exaggerated effects
+            latent = torch.randn(batch_size, self.z_dim)*3
             imgs = torch.sigmoid(self.net.decoder(latent))
             save_image(imgs, f"beta{self.beta}-generated.png", nrow=4)
 
 
     def latent_analysis(self):
         self.net_mode(train=False)
+        self.net.to(device="cpu")
         
         # TODO: Investigate which latent code corresponds to what feature in the image space.
+
+        out = []
+        resolution = 10
+        latent_base = torch.randn(self.z_dim)
+        for z in range(self.z_dim):
+            # collect range of zs
+            z_imgs = []
+            for zval in torch.linspace(-15,15,resolution):
+                latent = latent_base.detach().clone()
+                latent[z] = zval
+                z_imgs.append(torch.sigmoid(self.net.decoder(latent)))
+            out.append(torch.stack(z_imgs))
+        out = torch.stack(out).flatten(0, 2)
+        save_image(out, f"beta{self.beta}-variation.png", nrow=resolution)
+
 
 
     def rotate(self):
         self.net_mode(train=False)
+        self.net.to(device="cpu")
         
         # TODO: Create different views of a given input image
         from PIL import Image
@@ -193,7 +199,7 @@ class Solver(object):
 
         # Load image -- you may also try loading other images, even one of yourself
         img = np.expand_dims(np.swapaxes(np.swapaxes(np.array(Image.open(
-            "data/CelebA/img_align_celeba/img_align_celeba/000007.jpg"
+            os.path.join("data", "CelebA", "img_align_celeba", "img_align_celeba", "000007.jpg")
         ).convert("RGB"), dtype=np.float), 1, 2), 0, 1), axis=0)
         img[0] = img[0] / 255
         
