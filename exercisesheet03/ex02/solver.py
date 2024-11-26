@@ -170,8 +170,6 @@ class Solver(object):
     def latent_analysis(self):
         self.net_mode(train=False)
         self.net.to(device="cpu")
-        
-        # TODO: Investigate which latent code corresponds to what feature in the image space.
 
         out = []
         resolution = 10
@@ -193,17 +191,25 @@ class Solver(object):
         self.net_mode(train=False)
         self.net.to(device="cpu")
         
-        # TODO: Create different views of a given input image
         from PIL import Image
         import os
 
         # Load image -- you may also try loading other images, even one of yourself
         img = np.expand_dims(np.swapaxes(np.swapaxes(np.array(Image.open(
-            os.path.join("data", "CelebA", "img_align_celeba", "img_align_celeba", "000007.jpg")
-        ).convert("RGB"), dtype=np.float), 1, 2), 0, 1), axis=0)
+            os.path.join(os.path.abspath(__file__), "../", "data", "CelebA", "img_align_celeba", "000007.jpg")
+        ).convert("RGB"), dtype=float), 1, 2), 0, 1), axis=0)
         img[0] = img[0] / 255
         
-        # TODO: Rotate the face displayed on the image
+        rotation_dim = 11
+        # pick first of 
+        latent = self.net.encoder(torch.tensor(img, dtype=torch.float32))[0, :self.z_dim]
+        # rotate left
+        latent[rotation_dim] = -25
+        save_image(torch.sigmoid(self.net.decoder(latent)), f"beta{self.beta}-rotated_left.png")
+        # rotate right
+        latent[rotation_dim] = 25
+        save_image(torch.sigmoid(self.net.decoder(latent)), f"beta{self.beta}-rotated_right.png")
+
         
 
     def net_mode(self, train):
