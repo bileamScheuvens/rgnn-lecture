@@ -1,6 +1,6 @@
 {
  "general": {
-  "device": "CPU"
+  "device": "GPU"
  },
  "training": {
   "save_model": true,
@@ -21,8 +21,8 @@
   "num_lstm_layers": 2
  },
  "results": {
-  "current_epoch": 10,
-  "current_training_error": 2.5990319385820504,
-  "lowest_train_error": 2.5990319385820504
+  "current_epoch": 482,
+  "current_training_error": 0.9090841324733836,
+  "lowest_train_error": 0.9090841324733836
  }
 }

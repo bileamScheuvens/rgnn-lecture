@@ -1,0 +1,28 @@
+{
+  "general": {
+    "device": "GPU"
+  },
+  "training": {
+    "save_model": true,
+    "epochs": 482,
+    "learning_rate": 0.0001
+  },
+  "testing": {
+    "teacher_forcing_steps": 30,
+    "closed_loop_steps": 100
+  },
+  "dataset": {
+    "name": "chapter1"
+  },
+  "model": {
+    "name": "tcn482epoch",
+    "channels": [45, 45],
+    "dimensions": 1,
+    "kernel_size": 3
+  },
+  "results": {
+    "current_epoch": 478,
+    "current_training_error": 3.834798128629217,
+    "lowest_train_error": 3.834798128629217
+  }
+}
