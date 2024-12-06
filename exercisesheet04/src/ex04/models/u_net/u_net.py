@@ -121,9 +121,10 @@ class ConvNext(nn.Module):
     num of input and output channels are equal
     # TODO: No need to touch this
     """
-    def __init__(self, c: int):
+    def __init__(self, c: int, is_first_decoder: bool = False):
         super().__init__()
-        self.conv_1 = nn.Conv2d(c, c*4, kernel_size=7, groups=c, stride=1, padding='same')  # groups=c makes this a depth wise convolution
+        # double channels if first part of decoder
+        self.conv_1 = nn.Conv2d(c*(is_first_decoder + 1), c*4, kernel_size=7, groups=c, stride=1, padding='same')  # groups=c makes this a depth wise convolution
         self.layer_norm = LayerNormChannelOnly(c*4)
         self.conv_2 = nn.Conv2d(c*4, c, kernel_size=1)
         self.conv_3 = nn.Conv2d(c, c, kernel_size=1)
@@ -190,8 +191,8 @@ class DecoderModule(nn.Module):
     """
     def __init__(self, c_in: int, c_out: int, spatial_factor: int, num_blocks: int):
         super().__init__()
-        blocks = [UpScale(c_in, c_out, spatial_factor)]
-        for _ in range(num_blocks):
+        blocks = [UpScale(c_in, c_out, spatial_factor), ConvNext(c_out, is_first_decoder=True)]
+        for _ in range(num_blocks-1):
             blocks.append(ConvNext(c=c_out))
         self.blocks = torch.nn.Sequential(blocks)
 
