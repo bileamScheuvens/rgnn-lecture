@@ -13,3 +13,4 @@ __pycache__
 .vsode/
 data/**
 !data/*.py
+!config/data/
