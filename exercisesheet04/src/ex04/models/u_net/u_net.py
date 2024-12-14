@@ -227,7 +227,7 @@ class Decoder(nn.Module):
     def __init__(self, c_list: list[int], spatial_factor_list: list[int], num_blocks_list: list[int]):
         super().__init__()
         initial_conv = nn.Sequential(
-            UpScale(c_list[-1], c_list[-2], spatial_factor=2).to(os.environ["using_device"]),
+            UpScale(c_list[-1], c_list[-2], spatial_factor=spatial_factor_list[0]).to(os.environ["using_device"]),
             nn.Conv2d(c_list[-1], c_list[-2], kernel_size=1).to(os.environ["using_device"]),
         ).to(os.environ["using_device"])
         self.blocks = nn.ModuleList([initial_conv])
