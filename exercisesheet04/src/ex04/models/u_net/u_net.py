@@ -4,6 +4,7 @@ import torch.nn.functional as F
 import torch.nn as nn
 import numpy as np
 import torchvision.transforms as T
+import os
 
 
 class LayerNormChannelOnly(nn.Module):
@@ -121,10 +122,9 @@ class ConvNext(nn.Module):
     num of input and output channels are equal
     # TODO: No need to touch this
     """
-    def __init__(self, c: int, is_first_decoder: bool = False):
+    def __init__(self, c: int):
         super().__init__()
-        # double channels if first part of decoder
-        self.conv_1 = nn.Conv2d(c*(is_first_decoder + 1), c*4, kernel_size=7, groups=c, stride=1, padding='same')  # groups=c makes this a depth wise convolution
+        self.conv_1 = nn.Conv2d(c, c*4, kernel_size=7, groups=c, stride=1, padding='same')  # groups=c makes this a depth wise convolution
         self.layer_norm = LayerNormChannelOnly(c*4)
         self.conv_2 = nn.Conv2d(c*4, c, kernel_size=1)
         self.conv_3 = nn.Conv2d(c, c, kernel_size=1)
@@ -173,10 +173,10 @@ class EncoderModule(nn.Module):
     """
     def __init__(self, c_in: int, c_out: int, spatial_factor: int, num_blocks: int):
         super().__init__()
-        blocks = [DownScale(c_in, c_out, spatial_factor)]
+        blocks = [DownScale(c_in, c_out, spatial_factor), nn.Conv2d(c_in, c_out, kernel_size=1, )]
         for _ in range(num_blocks):
             blocks.append(ConvNext(c=c_out))
-        self.blocks = torch.nn.Sequential(blocks)
+        self.blocks = torch.nn.Sequential(*blocks).to(os.environ["using_device"])
 
     def forward(self, x):
         return self.blocks(x)
@@ -191,10 +191,10 @@ class DecoderModule(nn.Module):
     """
     def __init__(self, c_in: int, c_out: int, spatial_factor: int, num_blocks: int):
         super().__init__()
-        blocks = [UpScale(c_in, c_out, spatial_factor), ConvNext(c_out, is_first_decoder=True)]
-        for _ in range(num_blocks-1):
+        blocks = [UpScale(c_in, c_out, spatial_factor), nn.Conv2d(c_in*2, c_out, kernel_size=1)]
+        for _ in range(num_blocks):
             blocks.append(ConvNext(c=c_out))
-        self.blocks = torch.nn.Sequential(blocks)
+        self.blocks = torch.nn.Sequential(*blocks).to(os.environ["using_device"])
 
     def forward(self, x):
         return self.blocks(x)
@@ -207,19 +207,15 @@ class Encoder(nn.Module):
     def __init__(self, c_list: list[int], spatial_factor_list: list[int], num_blocks_list: list[int]):
         super().__init__()
         #  Tip: Try a skip connection before down scaling to boost model performance
-        # initial block
-        self.blocks = [EncoderModule(c_list[0], c_list[0], spatial_factor=1, num_blocks=num_blocks_list[0])]
-        for (c_in, spatial_factor, num_blocks) in zip(c_list[1:], spatial_factor_list, num_blocks_list):
-            self.blocks.append(EncoderModule(c_in, c_in, spatial_factor, num_blocks))
-
+        self.blocks = nn.ModuleList([])
+        for i, (spatial_factor, num_blocks) in enumerate(zip(spatial_factor_list, num_blocks_list)):
+            self.blocks.append(EncoderModule(c_list[i], c_list[i+1], spatial_factor, num_blocks))
 
     def forward(self, x):
-
-        skips = [x.copy()]
-
+        skips = []
         for block in self.blocks:
             x = block(x)
-            skips.append(x.copy())
+            skips.append(x.clone())
 
         return skips
 
@@ -230,16 +226,21 @@ class Decoder(nn.Module):
     """
     def __init__(self, c_list: list[int], spatial_factor_list: list[int], num_blocks_list: list[int]):
         super().__init__()
-        self.blocks = []
-        self.spatial_factor_list = spatial_factor_list
-        for (c_in, spatial_factor, num_blocks) in zip(reversed(c_list[:-1]), reversed(spatial_factor_list), reversed(num_blocks_list)):
-            self.blocks.append(EncoderModule(c_in, c_in, spatial_factor, num_blocks))
+        initial_conv = nn.Sequential(
+            UpScale(c_list[-1], c_list[-2], spatial_factor=2).to(os.environ["using_device"]),
+            nn.Conv2d(c_list[-1], c_list[-2], kernel_size=1).to(os.environ["using_device"]),
+        ).to(os.environ["using_device"])
+        self.blocks = nn.ModuleList([initial_conv])
+        c_list = list(reversed(c_list))
+        for i, (spatial_factor, num_blocks) in enumerate(zip(reversed(spatial_factor_list[1:]), reversed(num_blocks_list[1:]))):
+            self.blocks.append(DecoderModule(c_list[i+1], c_list[i+2], spatial_factor, num_blocks))
+
 
     def forward(self, skip_list: list):
         # first skip
         x = self.blocks[0](skip_list[0])
         for i in range(1, len(skip_list)):
-            x = torch.concat([x, skip_list[i]])
+            x = torch.cat([x, skip_list[i]], dim=-3)
             x = self.blocks[i](x)
         return x
 
@@ -299,7 +300,7 @@ class ConvNeXtUNet(nn.Module):
             )
         x = self.upscale_input_channels(x)
         skip_list = self.encoder(x)
-        x = self.decoder(skip_list)
+        x = self.decoder(list(reversed(skip_list)))
         x = self.downscale(x)
         return x
 
@@ -320,15 +321,16 @@ class ConvNeXtUNet(nn.Module):
         
         # TODO: possibly change rollout steps here
 
-        if "inference_steps" in list(kwargs.keys()):
+        if "inference_steps" in list(kwargs.keys()) and kwargs["inference_steps"] > 1:
             rollout_steps = kwargs["inference_steps"]
             x = x[:, :context_size]
             outs = [x[:, t] for t in range(context_size)]
         else:
+            rollout_steps = 1
             outs = []
 
         # Replace the empty channel dim with the frame dim (we put the frames into the channels)
-        x = x.squeeze()
+        x = x.squeeze(-3)
         # Closed loop: auto-regressive roll-out using previous model outputs as input
         for t in range(rollout_steps):
             prediction = self.forward_one_step(x)
