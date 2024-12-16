@@ -6,16 +6,16 @@ drop_last: false
 size: 32
 
 # This defines the number of input frames for the model
-context_size: 1 # TODO: Adjust this
+context_size: 32 # TODO: Adjust this
 
 # This cuts off the n first frames of the wave time series
-cut_off_first_n_frames: 0 # TODO: Adjust this
+cut_off_first_n_frames: 2 # TODO: Adjust this
 
 # This cuts off the n last frames of the wave time series
-cut_off_last_n_frames: 0 # TODO: Adjust this
+cut_off_last_n_frames: 2 # TODO: Adjust this
 
 # This subsamples from the amount of time series that the samples are created from
-use_x_share_of_samples: 0.2 # TODO: Adjust this
+use_x_share_of_samples: 0.3 # TODO: Adjust this
 
 # This defines the length of the target that the data loader returns, thus limiting
 # the number of closed-loop steps we can do during training

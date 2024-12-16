@@ -1,0 +1,3 @@
+- +experiment=unet
+- model.name=unet_slow_diagram_baseline_9_1_2full
+- device=cuda:0

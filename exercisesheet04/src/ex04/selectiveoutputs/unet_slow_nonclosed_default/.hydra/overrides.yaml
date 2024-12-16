@@ -1,0 +1,2 @@
+- model.name=my_clstm_model
+- device=cpu

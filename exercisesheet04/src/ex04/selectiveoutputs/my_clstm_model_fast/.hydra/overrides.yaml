@@ -1,0 +1,3 @@
+- model.name=my_clstm_model_fast
+- device=cpu
+- data.dataset_name=32x32_fast

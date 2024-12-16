@@ -308,7 +308,7 @@ class ConvNeXtUNet(nn.Module):
     def forward(
             self,
             x: torch.Tensor,
-            context_size: int = 4,
+            context_size: int = 32,
             epoch: int = 200,
             target_len: int = 3,
             **kwargs
