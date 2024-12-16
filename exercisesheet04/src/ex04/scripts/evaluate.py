@@ -54,10 +54,13 @@ def predict(
             otpt = model(
                 x=inpt,
                 teacher_forcing_steps=cfg.testing.teacher_forcing_steps,
-                inference_steps=inpt.shape[1] - cfg.data.context_size
+                inference_steps=inpt.shape[1] - cfg.model.c_out,
+                context_size=cfg.data.context_size
             )
             inputs.append(inpt.cpu()); outputs.append(otpt.cpu()); targets.append(trgt.cpu())
         inputs, outputs, targets = th.cat(inputs).numpy(), th.cat(outputs).numpy(), th.cat(targets).numpy()
+        outputs = outputs[:, :targets.shape[1]]
+        targets = targets[:, :outputs.shape[1]]
 
     return inputs, outputs, targets
 
@@ -73,6 +76,7 @@ def evaluate_model(cfg: DictConfig, file_path: str, fpem_reps: int = 0) -> None:
 
     if cfg.verbose: print("\n\nInitialize dataloader and model")
     device = th.device(cfg.device)
+    os.environ["using_device"] = cfg.device
 
     # Initializing dataset for testing
     dataset = hydra.utils.instantiate(config=cfg.data, mode="test")

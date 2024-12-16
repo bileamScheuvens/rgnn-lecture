@@ -10,7 +10,7 @@ import numpy as np
 import torch as th
 import torch.utils.tensorboard as tb
 
-sys.path.append("")
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 from models import *
 from data.pytorch_datasets import *
 import utils.helpers as helpers
@@ -29,6 +29,7 @@ def run_training(cfg):
         np.random.seed(cfg.seed)
         th.manual_seed(cfg.seed)
     device = th.device(cfg.device)
+    os.environ["using_device"] = cfg.device
 
 
     # Limit the number of threads to one (resulting in reasonable acceleration for CPU training)
@@ -108,8 +109,10 @@ def run_training(cfg):
             otpt = model(
                 x=inpt,
                 teacher_forcing_steps=cfg.training.teacher_forcing_steps,
+                inference_steps=cfg.model.inference_steps,
                 epoch=epoch,
-                target_len=len(trgt[0])
+                target_len=len(trgt[0]),
+                context_size=cfg.data.context_size,
             )
             train_loss = criterion(otpt, trgt[:, :otpt.shape[1]])
             train_loss.backward()
@@ -133,6 +136,8 @@ def run_training(cfg):
                 otpt = model(
                     x=inpt,
                     teacher_forcing_steps=cfg.validation.teacher_forcing_steps,
+                    inference_steps=cfg.model.inference_steps,
+                    context_size=cfg.data.context_size,
                     epoch=epoch,
                     target_len=len(trgt[0])
                 )
