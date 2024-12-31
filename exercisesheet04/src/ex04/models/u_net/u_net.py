@@ -308,7 +308,7 @@ class ConvNeXtUNet(nn.Module):
     def forward(
             self,
             x: torch.Tensor,
-            context_size: int = 4,
+            context_size: int = 32,
             epoch: int = 200,
             target_len: int = 3,
             **kwargs
@@ -338,7 +338,7 @@ class ConvNeXtUNet(nn.Module):
             outs.append(prediction)
 
         if "inference_steps" in list(kwargs.keys()):
-            return torch.stack(outs, dim=1)
+            return torch.stack(outs[-rollout_steps:], dim=1)
         else:
             # Training and validation: fill up the output with zeros to align with target shape
             for t in range(target_len-len(outs)): outs.append(torch.zeros_like(outs[0]))
