@@ -3,7 +3,9 @@ import torch as th
 import torch.nn as nn
 import torch.nn.functional as F
 import math
+import numpy as np
 from abc import ABC, abstractmethod
+from PIL import Image
 
 def kl_loss(mu, logvar):
     """
@@ -72,13 +74,12 @@ class AbstractAutoencoder(nn.Module, ABC):
 
 def cosine_beta_schedule(num_timesteps, s=0.008):
     # Timesteps are from 0 to T-1
-    alphas = torch.zeros(num_timesteps+1)
-    for t in range(num_timesteps+1):
-        alphas[t] = torch.cos(((t/(num_timesteps + s))/1+s) * torch.pi / 2)^2
-
-    alphas /= alphas[0]
-    betas = 1 - alphas[:-1] / alphas[1:]
+    alphas_cumprod = torch.linspace(0, num_timesteps, num_timesteps+1, dtype=torch.float64)
+    alphas_cumprod = torch.cos(((alphas_cumprod / num_timesteps) + s) / (1 + s) * torch.pi * 0.5) ** 2
+    alphas_cumprod = alphas_cumprod / alphas_cumprod[0]
+    betas = 1 - (alphas_cumprod[1:] / alphas_cumprod[:-1])
     return betas.clamp(0, 0.999)
+
 
 class AbstractLatentDiffusionModel(nn.Module, ABC):
     def __init__(self, vae, num_timesteps: int = 4000, beta_start: float = 0.0001, beta_end: float = 0.02, use_cosine_schedule=True):
@@ -281,6 +282,7 @@ class AbstractLatentDiffusionModel(nn.Module, ABC):
 
     @torch.no_grad()
     def sample(self, input, z_shape: torch.Size, steps: int = None, clip_limit = None, use_ddim = False) -> torch.Tensor:
+        self.counter[0]= 1
         if use_ddim:
             x_sampled = self.sample_ddim(z_shape, steps=steps, clip_limit=clip_limit)
         else:

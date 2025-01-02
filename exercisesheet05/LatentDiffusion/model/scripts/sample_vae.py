@@ -9,8 +9,17 @@ from data.lightning_ffhq import FFHQDataModule
 from model.autoencoder.ffhq import FfhqAutoencoder
 from model.lightning.vae_trainer import VAETrainerModule
 from utils.configuration import Configuration
+import torch
 
-def sample_vae(cfg: Configuration, checkpoint_path, output_path='samples', num_samples=1, device=0):
+def cosine_beta_schedule(num_timesteps, s=0.008):
+    # Timesteps are from 0 to T-1
+    alphas_cumprod = torch.linspace(0, num_timesteps, num_timesteps+1, dtype=torch.float64)
+    alphas_cumprod = torch.cos(((alphas_cumprod / num_timesteps) + s) / (1 + s) * torch.pi * 0.5) ** 2
+    alphas_cumprod = alphas_cumprod / alphas_cumprod[0]
+    betas = 1 - (alphas_cumprod[1:] / alphas_cumprod[:-1])
+    return betas.clamp(0, 0.999)
+
+def sample_vae(cfg: Configuration, checkpoint_path, output_path='samples', num_samples=1, device=0, noise=True):
     os.makedirs(output_path, exist_ok=True)
 
     # Set device
@@ -45,9 +54,22 @@ def sample_vae(cfg: Configuration, checkpoint_path, output_path='samples', num_s
 
             # Get input and send to device
             input_image = batch[0].to(device)
-            
-            # Get reconstructed image
-            results = model(input_image)
+            if noise:
+                n_steps = 15
+                schedules = {"cosine": cosine_beta_schedule(n_steps), "linear": torch.linspace(0, 1, n_steps)}
+                for noise_type, betas in schedules.items():
+                    z, _ = model.net.encode(input_image[0])
+                    alpha_cumprod = torch.cumprod(1 - betas, dim=0)
+                    images = []
+                    for t in range(n_steps):
+                        z_t = torch.sqrt(alpha_cumprod[t])*z + torch.randn_like(z)*torch.sqrt(1-alpha_cumprod[t])
+                        decoded = model.net.output_postprocessing(model.net.decode(z_t))
+                        image = (decoded.cpu().numpy().transpose(1, 2, 0) * 255).astype(np.uint8)
+                        images.append(image)
+                    Image.fromarray(np.concatenate(images, axis=1)).save(os.path.join(output_path, f'sample_noised_{noise_type}.png'))
+            else:
+                # Get reconstructed image
+                results = model(input_image)
             output_image = results['output']
             input_image  = results['input']
 
