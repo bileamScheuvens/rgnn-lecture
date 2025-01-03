@@ -157,9 +157,10 @@ class AbstractLatentDiffusionModel(nn.Module, ABC):
             sqrt_alpha_cumprod_t = sqrt_alpha_cumprod_t.unsqueeze(-1)
             sqrt_one_minus_alpha_cumprod_t = sqrt_one_minus_alpha_cumprod_t.unsqueeze(-1)
 
-        z_t = sqrt_alpha_cumprod_t * z_0 + sqrt_one_minus_alpha_cumprod_t * noise
-        v_t = sqrt_alpha_cumprod_t * noise + sqrt_one_minus_alpha_cumprod_t * z_0
-
+        z_t = (sqrt_alpha_cumprod_t * z_0 + sqrt_one_minus_alpha_cumprod_t * noise).to(x.dtype)
+        v_t = (sqrt_alpha_cumprod_t * noise + sqrt_one_minus_alpha_cumprod_t * z_0).to(x.dtype)
+        
+        self.to(x.device)
         v_pred = self.denoise(z_t, t)  # model predicts v
 
         loss = F.mse_loss(v_pred, v_t)
