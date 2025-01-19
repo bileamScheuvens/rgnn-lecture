@@ -274,18 +274,28 @@ class AbstractLatentDiffusionModel(nn.Module, ABC):
         # Start from standard Normal noise in latent space
         z = torch.randn(z_shape, device=device)
         
+        xs = []
         for t in step_indices:
             z = self.ddpm_step(z, t.item(), clip_limit=clip_limit)
+            if((t+1) % 200 == 0):
+                
+                xs.append({'step': t, 'value': self.decode(z)})
+                
 
         # Decode the final latent
         x_sampled = self.decode(z)
-        return x_sampled
+        return x_sampled, xs
 
     @torch.no_grad()
     def sample(self, input, z_shape: torch.Size, steps: int = None, clip_limit = None, use_ddim = False) -> torch.Tensor:
         self.counter[0]= 1
         if use_ddim:
             x_sampled = self.sample_ddim(z_shape, steps=steps, clip_limit=clip_limit)
+            return self.vae.output_postprocessing(x_sampled)
         else:
-            x_sampled = self.sample_ddpm(z_shape, steps=steps, clip_limit=clip_limit)
-        return self.vae.output_postprocessing(x_sampled)
+            x_sampled, xs = self.sample_ddpm(z_shape, steps=steps, clip_limit=clip_limit)
+            pxs = []
+            for x in xs:
+                pxs.append({'step': x['step'], 'value': self.vae.output_postprocessing(x['value'])})
+            return self.vae.output_postprocessing(x_sampled), pxs
+        
