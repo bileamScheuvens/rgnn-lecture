@@ -46,10 +46,25 @@ def sample(cfg: Configuration, checkpoint_path, output_path='samples', num_sampl
 
     # Sample from the diffusion model
     with th.no_grad():
-        output = model.sample(batch, latent_shape, steps=steps, clip_limit=clip_limit, use_ddim=use_ddim)
+        output, xs = model.sample(batch, latent_shape, steps=steps, clip_limit=clip_limit, use_ddim=use_ddim)
 
     # Process and save the output images using PIL
     for i in tqdm(range(num_samples)):
+        print('output iterations')
+        for x in xs:
+
+            output_image = x['value'][i].cpu()
+
+            np_image = output_image.numpy().transpose(1, 2, 0) * 255  # Convert to [0, 255]
+            np_image = np_image.astype(np.uint8)
+
+            if np_image.shape[2] == 1:
+                np_image = np_image[:, :, 0]
+
+            pil_image = Image.fromarray(np_image)
+            xstep = x['step']
+            pil_image.save(os.path.join(output_path, f'sample_{i + 1}_step_{xstep}.png'))
+            
         output_image = output[i].cpu()
 
         np_image = output_image.numpy().transpose(1, 2, 0) * 255  # Convert to [0, 255]
