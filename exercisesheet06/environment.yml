@@ -1,0 +1,28 @@
+name: lecture6
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.9
+  - pip
+  - pip:
+      - --extra-index-url https://download.pytorch.org/whl/cu121
+      - torch
+      - "gymnasium[box2d]"
+      - matplotlib
+      - pyglet==1.5.27
+      - numpy
+      - einops
+      - opencv-python
+      - h5py
+      - pyyaml
+      - pillow
+      - pandas
+      - jsmin
+      - scipy
+      - scikit-image
+      - matplotlib
+      - torchvision
+      - lpips
+      - motmetrics
+      - ffmpeg

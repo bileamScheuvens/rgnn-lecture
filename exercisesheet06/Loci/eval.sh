@@ -1,0 +1,2 @@
+python -m scripts.exec.eval -cfg out/pretrained1/bouncingballs/cfg.json -load out/pretrained1/bouncingballs/net_final.pt -n 1
+#python -m scripts.exec.eval -cfg out/pretrained1/adept/cfg.json -load out/pretrained1/adept/net_final.pt -n 1
