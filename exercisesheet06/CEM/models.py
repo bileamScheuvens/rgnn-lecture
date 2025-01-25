@@ -27,11 +27,23 @@ class SimpleModel:
 class NeuralNetworkModel(torch.nn.Module):
     def __init__(self, input_size, hidden_size, output_size):
         super(NeuralNetworkModel, self).__init__()
-        # TODO: implement me
-        pass
+        self.model = torch.nn.Sequential(
+            torch.nn.Linear(input_size, hidden_size),
+            torch.nn.ReLU(),
+            torch.nn.Linear(hidden_size, hidden_size),
+            torch.nn.ReLU(),
+            torch.nn.Linear(hidden_size, hidden_size),
+            torch.nn.ReLU(),
+            torch.nn.Linear(hidden_size, output_size)
+
+        )
+        
 
     def forward(self, x):
         # x[0:6]: observation
         # x[6:8]: action
-        # TODO: implement me
-        pass
+        observation = x[:6]
+        action = x[6:]
+        # scale observations
+        observation = (observation - observation.mean()) / observation.std()
+        return self.model(torch.cat([observation, action]))

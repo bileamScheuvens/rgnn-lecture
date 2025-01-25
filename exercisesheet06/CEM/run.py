@@ -135,9 +135,8 @@ planner_cem = planners.CrossEntropyMethod(
 )
 
 
-# TODO: Initialize optimizer
 if train:
-    optimizer = None
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 
 
 # Adapt if necessary
@@ -169,6 +168,7 @@ while epoch < epochs:
                 actions = gym.envs.box2d.lunar_lander.heuristic(env, observation_old)
             else:
                 actions = env.action_space.sample()
+            action = torch.Tensor(actions)
             actions = torch.Tensor(actions).unsqueeze(dim=0)
 
             # Randomly switch between heuristic and random actions to create
